@@ -1,0 +1,250 @@
+%{
+#include <stdio.h>
+#include <string.h>
+
+	int yylex();
+	int yyerror(const char *ErrorMsg);
+
+	int EsteCorecta = 1;
+	char ErrorMsg[500];
+
+	class STable
+	{
+		char* VName;
+		int Val;
+		STable* Next;
+
+	public:
+		static STable* Head;
+		static STable* Tail;
+
+		STable(char* n, int v = -1);
+		STable();
+		int IsIn(char* n);
+		void Add(char* n, int v = -1);
+		int getValue(char* n);
+		void setValue(char* n, int v);
+	};
+
+	STable* STable::Head;
+	STable* STable::Tail;
+
+	STable::STable(char* n, int v)
+	{
+		this->VName= new char[strlen(n) + 1];
+		strcpy(this->VName, n);
+		this->Val = v;
+		this->Next = NULL;
+	}
+
+	STable::STable()
+	{
+		STable::Head = NULL;
+		STable::Tail = NULL;
+	}
+
+	int STable::IsIn(char* n)
+	{
+		STable* tmp = STable::Head;
+		while (tmp != NULL)
+		{
+			if (strcmp(tmp->VName, n) == 0)
+				return 1;
+			tmp = tmp->Next;
+		}
+		return 0;
+	}
+
+	void STable::Add(char* n, int v)
+	{
+		STable* elem = new STable(n, v);
+		if (Head == NULL)
+		{
+			STable::Head = STable::Tail = elem;
+		}
+		else
+		{
+			STable::Tail->Next = elem;
+			STable::Tail = elem;
+		}
+	}
+
+	int STable::getValue(char* n)
+	{
+		STable* tmp = STable::Head;
+		while (tmp != NULL)
+		{
+			if (strcmp(tmp->VName, n) == 0)
+				return tmp->Val;
+			tmp = tmp->Next;
+		}
+		return -1;
+	}
+
+	void STable::setValue(char* n, int v)
+	{
+		STable* tmp = STable::Head;
+		while (tmp != NULL)
+		{
+			if (strcmp(tmp->VName, n) == 0)
+			{
+				tmp->Val = v;
+			}
+			tmp = tmp->Next;
+		}
+	}
+
+	STable* Ts = NULL;
+	%}
+
+%code requires{
+typedef struct punct { int x,y,z; } PUNCT;
+}
+
+%union { char* sir; int val; PUNCT p; }
+
+%token TOK_PLUS TOK_MINUS TOK_MULTIPLY TOK_DIVIDE TOK_LEFT TOK_RIGHT TOK_EQUAL TOK_PROGRAM TOK_BEGIN TOK_END TOK_INTEGER TOK_DECLARE TOK_INT TOK_READ TOK_WRITE TOK_FOR TOK_DO TOK_TO TOK_ID
+%token <val> TOK_NUMBER
+%token <sir> TOK_VARIABLE
+
+%start S
+
+%left TOK_PLUS TOK_MINUS
+%left TOK_MULTIPLY TOK_DIVIDE
+
+%%
+S :TOK_PROGRAM A TOK_VARIABLE B TOK_BEGIN C TOK_END
+|
+error ';' S 
+{ EsteCorecta=0;} 
+;
+A :TOK_ID
+;
+B: D
+|
+B ';' D
+;
+D:
+E ':' F
+;
+F: TOK_INTEGER
+;
+E:TOK_ID
+|
+E ',' TOK_ID
+;
+C:
+G
+|
+C ';' G
+;
+G: H 
+|
+I 
+|
+J
+|
+K
+;
+H: TOK_ID TOK_EQUAL L
+ {
+	if(Ts != NULL)
+	{
+	  if(Ts->IsIn($1) == 1)
+	  {
+	    Ts->setValue($1, $3);
+	  }
+	  else
+	  {
+	    sprintf(msg,"%d:%d Eroare semantica:Nu a fost declarata variabila!", @1.first_line, @1.first_column, $1);
+	    yyerror(msg);
+	    YYERROR;
+	  }
+	}
+;
+L:
+M
+|
+L TOK_PLUS M 
+{ $$ = $1 + $3; } 
+L TOK_MINUS M 
+{ $$ = $1 - $3; } 
+;
+M:
+N
+|
+M TOK_MULTIPLY N 
+{ $$ = $1 * $3; } 
+|
+M TOK_DIVIDE N 
+{
+	if($3==0)
+	 sprintf(ErrorMsg,"%d:%d Eroare semantica:Nu se poate imparti la 0", @1.first_line, @1.first_column);
+  else { $$ = $1 / $3; } 
+    
+}
+;
+N:
+TOK_ID
+|
+TOK_INT
+|
+L
+      {
+	if(Ts != NULL)
+	{
+	  if(Ts->IsIn($2) == 0)
+	  {
+	    Ts->Add($2);
+	  }
+	  else
+	  {
+	    sprintf(ErrorMsg,"%d:%d Eroare semantica: Declaratii multiple pentru variabila %s!", @1.first_line, @1.first_column, $2);
+	    yyerror(ErrorMsg);
+	    YYERROR;
+	  }
+	  }
+	  }
+; 
+I:
+TOK_READ TOK_LEFT E TOK_RIGHT
+;
+J: TOK_WRITE TOK_LEFT E TOK_RIGHT
+{
+	if(Ts != NULL)
+	{
+	  if(Ts->IsIn($2) == 1)
+	  {
+	    if(Ts->GetValue($2) == -1)
+	    {
+	      sprintf(ErrorMsg,"%d:%d Eroare semantica: Variabila %s nu a fost initializata!", @1.first_line, @1.first_column, $2);
+	      yyerror(ErrorMsg);
+	      YYERROR;
+	    }
+	  }
+}
+;
+K:
+TOK_FOR P TOK_DO R
+;
+P:
+TOK_ID TOK_EQUAL L TOK_TO L
+;
+R:
+TOK_BEGIN C TOK_END
+;
+%%
+
+int main()
+{
+	yyparse();
+
+	
+	return 0;
+}
+
+int yyerror(const char *ErrorMsg)
+{
+	printf("Error: %s\n", ErrorMsg);
+	return 1;
+}
