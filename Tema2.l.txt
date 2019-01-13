@@ -1,0 +1,37 @@
+%{
+	#include "y.tab.h"
+
+	int LineNumber = 1;
+	int ColNumber = 1;
+%}
+
+%%
+"+"				{ ColNumber++; return TOK_PLUS; }
+"-"				{ ColNumber++; return TOK_MINUS; }
+"*"				{ ColNumber++; return TOK_MULTIPLY; }
+"DIV"				{ ColNumber+=3; return TOK_DIVIDE; }
+"("				{ ColNumber++; return TOK_LEFT; }
+")"				{ ColNumber++; return TOK_RIGHT; }
+";"				{ ColNumber++; return ';'; }
+":"				{ ColNumber++; return ':'; }
+","              {ColNumber++; return ",";}
+":="		    { ColNumber+=2; return  TOK_EQUAL; }
+0|[1-9][0-9]*	{ yylloc.first_line = LineNumber; yylloc.first_column = ColNumber; ColNumber+=strlen(yytext); yylval.val = atoi(yytext); return TOK_NUMBER; }
+"PROGRAM"       {ColNumber+=7; return TOK_PROGRAM;}
+"BEGIN"         {ColNumber+=5; return TOK_BEGIN;}
+"END"           { ColNumber+=3; return TOK_END;}
+"INTEGER"        {ColNumber+=7; return TOK_INTEGER;}
+"VAR"			{ ColNumber+=3; return TOK_DECLARE; }
+"int"            {ColNumber+=3; return TOK_INT;}
+"READ"           {ColNumber+=4; return TOK_READ;}
+"WRITE"          {ColNumber+=5; return TOK_WRITE;}
+"FOR"            {ColNumber+=3; return TOK_FOR;}
+"DO"             {ColNumber+=2;  return TOK_DO;}
+"TO"             {ColNumber+=2;   return TOK_TO;}
+"id"             {ColNumber+=2; return TOK_ID;}
+[a-zA-Z][a-zA-Z0-9]* { yylloc.first_line = LineNumber; yylloc.first_column = ColNumber; ColNumber+=strlen(yytext); yylval.sir = new char[strlen(yytext)+1]; strcpy(yylval.sir,yytext); return TOK_VARIABLE;}
+[ ]				{ ColNumber++; }
+\r\n			{ LineNumber++; ColNumber=1; }
+\n				{ LineNumber++; ColNumber=1; }
+.				{ ColNumber++; return TOK_ERROR; }
+%%
