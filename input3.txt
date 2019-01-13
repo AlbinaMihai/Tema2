@@ -1,0 +1,10 @@
+PROGRAM Nume1
+VAR
+a1,b,c: INTEGER;
+x,y,z: INTEGER;
+!!!!!!!!!
+BEGIN
+READ(x);
+READ(y);
+READ(z);
+a1=x+y+z;
